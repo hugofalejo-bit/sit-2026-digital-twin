@@ -1,5 +1,3 @@
-# sit-2026-digital-twin
-SIT-2026 | Supply Chain Digital Twin: An enterprise-grade analytical engine built with Streamlit and DuckDB to evaluate the financial and operational impact of nearshoring in EU maritime transport.
 SIT-2026 | Supply Chain Twin (Edición Enterprise)
 Resumen del Proyecto
 SIT-2026 es un Gemelo Digital logístico diseñado para medir empíricamente el impacto financiero de relocalizar las cadenas de suministro (Nearshoring) hacia la Unión Europea. La herramienta procesa millones de microdatos comerciales para cuantificar ineficiencias ocultas, calcular el impacto del impuesto al carbono (EU ETS) y proyectar riesgos de inventario.
