@@ -571,13 +571,16 @@ def page_executive_dashboard(where):
     fig.add_trace(go.Bar(x=ts['t'], y=ts['lvar_bn'], marker_color=np.where(ts['crisis']==1, COLORS['ub_red'], COLORS['ub_blue']), opacity=0.8), row=3, col=1)
     pt(fig); fig.update_layout(height=600, showlegend=False); add_crises(fig, is_subplot=True); st.plotly_chart(fig, use_container_width=True)
 
-    # --- NUEVO: ÁREA DE MACRO SECTORES ---
-    section("DESGLOSE SECTORIAL", "Dinámica de Importación por Macro Sector (Últimos 10 Años)")
-    s_ts = q(2, f"SELECT YEAR(date) AS anio, macro_sector, SUM(eur)/1e9 AS eur_bn FROM trade {where} WHERE YEAR(date) >= (SELECT MAX(YEAR(date))-9 FROM trade {where}) GROUP BY 1, 2 ORDER BY 1, 2")
+    # -------------------------------------------------------------------------
+    # AGREGADO: GRÁFICO DE ÁREAS SECTORIAL (Sin modificar lo demás)
+    # -------------------------------------------------------------------------
+    section("DESGLOSE SECTORIAL", "Dinámica de Importación por Macro Sector")
+    s_ts = q(2, f"SELECT YEAR(date) AS anio, macro_sector, SUM(eur)/1e9 AS eur_bn FROM trade {where} GROUP BY 1, 2 ORDER BY 1, 2")
     if not s_ts.empty:
-        fig_sec = px.area(s_ts, x="anio", y="eur_bn", color="macro_sector", title="Evolución de Sectores Clave (€ Bn)", color_discrete_sequence=px.colors.qualitative.Prism)
-        pt(fig_sec); fig_sec.update_layout(height=450); st.plotly_chart(fig_sec, use_container_width=True)
-
+        fig_sec = px.area(s_ts, x="anio", y="eur_bn", color="macro_sector", color_discrete_sequence=px.colors.qualitative.Prism)
+        pt(fig_sec)
+        fig_sec.update_layout(height=450, xaxis_title="", yaxis_title="Volumen FOB (€ Bn)")
+        st.plotly_chart(fig_sec, use_container_width=True)
 
 # ═════════════════════════════════════════════════════════════════════════════
 # PAGINA 2 · TRADE FLOW INTELLIGENCE
@@ -595,14 +598,6 @@ def page_trade_flow(where):
         fig.update_geos(showframe=False, showcoastlines=True, coastlinecolor='#cbd5e1', showland=True, landcolor='#f8fafc', showocean=True, oceancolor='#f1f5f9', showcountries=True, countrycolor='#cbd5e1', bgcolor='rgba(0,0,0,0)')
         pt(fig); fig.update_layout(height=500, geo=dict(bgcolor='rgba(0,0,0,0)')); st.plotly_chart(fig, use_container_width=True)
 
-    # --- NUEVO: MAPA ANIMADO (TIME-LAPSE) ---
-    section("EVOLUCIÓN HISTÓRICA", "Time-lapse de Dependencia Global por País de Origen (Animado)")
-    geo_anim = q(3, f"SELECT YEAR(date) AS anio, o_iso, origin_name, SUM(eur)/1e9 AS eur_bn FROM trade {where} GROUP BY 1, 2, 3 ORDER BY anio")
-    if not geo_anim.empty:
-        fig_map_anim = px.choropleth(geo_anim, locations="o_iso", color="eur_bn", animation_frame="anio", hover_name="origin_name", color_continuous_scale="Blues", labels={'eur_bn':'Valor €Bn'}, title="Transición Histórica de Abastecimiento (Presiona Play)")
-        fig_map_anim.update_geos(showframe=False, showcoastlines=True, coastlinecolor='#cbd5e1', showland=True, landcolor='#f8fafc', showocean=True, oceancolor='#f1f5f9', showcountries=True, countrycolor='#cbd5e1', bgcolor='rgba(0,0,0,0)')
-        pt(fig_map_anim); fig_map_anim.update_layout(height=600, geo=dict(bgcolor='rgba(0,0,0,0)')); st.plotly_chart(fig_map_anim, use_container_width=True)
-
     sankey_data = q(9999, f"SELECT origin_name as source, d_iso as intermediate, puerto as target, SUM(eur)/1e9 as value FROM trade {where} AND YEAR(date)={latest_year} GROUP BY 1,2,3 ORDER BY value DESC LIMIT 30")
     if not sankey_data.empty:
         sankey_data['intermediate'] = sankey_data['intermediate'].map(lambda x: ISO3_EU.get(x, x))
@@ -615,6 +610,35 @@ def page_trade_flow(where):
         fig_s = go.Figure(go.Sankey(node=dict(pad=15, thickness=20, line=dict(color='white', width=0.5), label=all_nodes, color=n_colors), link=dict(source=src, target=tgt, value=val, color='rgba(0,61,101,0.2)')))
         pt(fig_s); fig_s.update_layout(title="Red Estructural de Nodos: País de Origen → Estado Miembro → Puerto (FOB €Bn)", height=500); st.plotly_chart(fig_s, use_container_width=True)
         ai_agent("Vulnerabilidad Topológica", "El diagrama Sankey superior evidencia Puntos Únicos de Fallo (Single Points of Failure). Si observas líneas muy gruesas convergiendo en un solo puerto a la derecha, ese nodo tiene un riesgo sistémico colosal. Diversificar países de origen no sirve si todos desembocan en la misma terminal.")
+
+    # -------------------------------------------------------------------------
+    # AGREGADO: GRÁFICO ANIMADO DE BARRAS (Sin modificar el mapa estático)
+    # -------------------------------------------------------------------------
+    section("EVOLUCIÓN HISTÓRICA", "Transición Histórica de Socios Comerciales (Presiona Play)")
+    anim_df = q(9998, f"SELECT YEAR(date) AS anio, origin_name, SUM(eur)/1e9 AS eur_bn FROM trade {where} GROUP BY 1, 2")
+    
+    if not anim_df.empty:
+        # Ordenamos los datos para crear el efecto de "Bar Chart Race"
+        anim_df = anim_df.sort_values(by=['anio', 'eur_bn'], ascending=[True, False])
+        top25_df = anim_df.groupby('anio').head(25)
+        top25_df = top25_df.sort_values(by=['anio', 'eur_bn'], ascending=[True, True])
+        
+        fig_anim = px.bar(
+            top25_df, 
+            x="eur_bn", 
+            y="origin_name", 
+            animation_frame="anio", 
+            animation_group="origin_name",
+            color="origin_name", 
+            color_discrete_sequence=px.colors.qualitative.Pastel,
+            orientation='h', 
+            range_x=[0, top25_df['eur_bn'].max() * 1.05]
+        )
+        pt(fig_anim)
+        fig_anim.update_layout(height=650, showlegend=False, yaxis_title="", xaxis_title="Volumen FOB (€ Bn)")
+        st.plotly_chart(fig_anim, use_container_width=True)
+        
+        ai_agent("Dinámica de Regionalización", "Reproduce la animación superior para observar cómo la jerarquía de los socios comerciales se ha reconfigurado. El ascenso de países europeos o de la cuenca mediterránea en el ranking es la confirmación visual de la estrategia de Nearshoring a lo largo del tiempo.")
 
 
 # ═════════════════════════════════════════════════════════════════════════════
