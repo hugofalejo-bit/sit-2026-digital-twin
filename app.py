@@ -613,21 +613,21 @@ def page_trade_flow(where):
         ai_agent("Vulnerabilidad Topológica", "El diagrama Sankey superior evidencia Puntos Únicos de Fallo (Single Points of Failure). Si observas líneas muy gruesas convergiendo en un solo puerto a la derecha, ese nodo tiene un riesgo sistémico colosal. Diversificar países de origen no sirve si todos desembocan en la misma terminal.")
 
     # -------------------------------------------------------------------------
-    # AGREGADO: BAR CHART RACE CORREGIDO (Orden dinámico y velocidad ajustable)
+    # AGREGADO: BAR CHART RACE CORREGIDO (Textos anclados y forzados)
     # -------------------------------------------------------------------------
     section("EVOLUCIÓN HISTÓRICA", "Transición Histórica de Socios Comerciales")
     anim_df = q(9998, f"SELECT YEAR(date) AS anio, origin_name, SUM(eur)/1e9 AS eur_bn FROM trade {where} GROUP BY 1, 2")
     
     if not anim_df.empty:
-        # Calculamos el ranking de cada país por año para forzar el reordenamiento visual
         anim_df['rank'] = anim_df.groupby('anio')['eur_bn'].rank(method='first', ascending=False)
-        top_df = anim_df[anim_df['rank'] <= 15].copy()  # Mostramos solo los 15 principales
-        
-        # Ordenamos los datos para que Plotly lea el flujo cronológico correctamente
+        top_df = anim_df[anim_df['rank'] <= 15].copy()
         top_df = top_df.sort_values(by=['anio', 'rank'], ascending=[True, True])
         
-        # Creamos una etiqueta limpia para mostrar dentro de las barras (País + Valor)
-        top_df['etiqueta'] = top_df['origin_name'] + " (" + top_df['eur_bn'].round(1).astype(str) + " Bn)"
+        # Combinamos el nombre y el valor para que sea auto-explicativo
+        top_df['etiqueta'] = top_df['origin_name'] + " (€" + top_df['eur_bn'].round(1).astype(str) + " Bn)"
+
+        # Calculamos un máximo X un 40% más amplio para que el texto nunca choque con el borde
+        max_x = top_df['eur_bn'].max() * 1.40
 
         fig_anim = px.bar(
             top_df, 
@@ -639,21 +639,33 @@ def page_trade_flow(where):
             text="etiqueta",
             color_discrete_sequence=px.colors.qualitative.Pastel,
             orientation='h', 
-            range_x=[0, top_df['eur_bn'].max() * 1.15]
+            range_x=[0, max_x]
         )
         
-        # Ocultamos el eje numérico del rango y dejamos solo la etiqueta de texto en las barras
         fig_anim.update_yaxes(autorange="reversed", showticklabels=False, title="", showgrid=False)
         fig_anim.update_xaxes(showgrid=True, gridcolor="#e2e8f0")
         
-        # Reducimos la velocidad de la animación (más milisegundos = transición más lenta y suave)
         fig_anim.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] = 1200
         fig_anim.layout.updatemenus[0].buttons[0].args[1]["transition"]["duration"] = 800
         
         pt(fig_anim)
-        fig_anim.update_layout(height=550, showlegend=False, xaxis_title="Volumen FOB (€ Bn)", margin=dict(l=20, r=20, t=40, b=40))
-        # Para evitar que los textos desaparezcan, los fijamos dentro de las barras y los ponemos en negrita
-        fig_anim.update_traces(textposition='inside', textfont=dict(size=12, color='#1e293b', weight='bold'), cliponaxis=False)
+        
+        # MAGIA APLICADA AQUÍ: uniformtext_mode='show' fuerza a que el texto nunca desaparezca
+        fig_anim.update_layout(
+            height=550, 
+            showlegend=False, 
+            xaxis_title="Volumen FOB (€ Bn)", 
+            margin=dict(l=20, r=50, t=40, b=40),
+            uniformtext_minsize=11, 
+            uniformtext_mode='show'
+        )
+        
+        # textposition='outside' los saca de la barra para que siempre se lean claros
+        fig_anim.update_traces(
+            textposition='outside', 
+            textfont=dict(size=13, color='#1e293b', weight='bold'), 
+            cliponaxis=False
+        )
         
         st.plotly_chart(fig_anim, use_container_width=True)
         
