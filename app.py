@@ -201,15 +201,22 @@ CRISIS_EVENTS = {
 # ─────────────────────────────────────────────────────────────────────────────
 @st.cache_resource
 def get_con():
-    con = duckdb.connect(':memory:', read_only=False)
-    if not os.path.exists(PARQUET_PATH):
-        st.error(f"Error: No se encuentra la base de datos Parquet en:\n `{PARQUET_PATH}`")
+    # 1. Obtenemos el Token de los Secrets de Streamlit
+    try:
+        token = st.secrets["MOTHERDUCK_TOKEN"]
+    except KeyError:
+        st.error("Error: No se encontró el 'MOTHERDUCK_TOKEN' en los Secrets de Streamlit.")
         st.stop()
 
+    # 2. Conectamos directamente a MotherDuck
+    con = duckdb.connect(f'md:?motherduck_token={token}')
+
+    # 3. Generamos el mapeo de nombres HS2
     hs2_case = ' '.join([f"WHEN CAST(hs2_code AS INTEGER) = {int(k)} THEN '{v}'" for k, v in HS2_ES.items()])
 
+    # 4. Creamos la vista 'trade' leyendo de la tabla en la nube (my_db.raw_trade)
     con.execute(f"""
-        CREATE VIEW trade AS
+        CREATE OR REPLACE VIEW trade AS
         SELECT *,
             CASE
                 WHEN CAST(hs2_code AS INTEGER) BETWEEN 25 AND 27 OR CAST(hs2_code AS INTEGER) BETWEEN 72 AND 83 THEN kg/24000.0
@@ -236,7 +243,7 @@ def get_con():
                 ELSE 'Otros Sectores'
             END, 'Otros Sectores') AS macro_sector,
             COALESCE(CASE {hs2_case} ELSE 'Otros' END, 'Otros') AS hs2_nombre
-        FROM read_parquet('{PARQUET_PATH}')
+        FROM my_db.raw_trade
     """)
     return con
 
