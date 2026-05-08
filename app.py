@@ -615,7 +615,7 @@ def page_trade_flow(where):
     # -------------------------------------------------------------------------
     # AGREGADO: BAR CHART RACE CORREGIDO (Orden dinámico y velocidad ajustable)
     # -------------------------------------------------------------------------
-    section("EVOLUCIÓN HISTÓRICA", "Transición Histórica de Socios Comerciales (Presiona Play)")
+    section("EVOLUCIÓN HISTÓRICA", "Transición Histórica de Socios Comerciales")
     anim_df = q(9998, f"SELECT YEAR(date) AS anio, origin_name, SUM(eur)/1e9 AS eur_bn FROM trade {where} GROUP BY 1, 2")
     
     if not anim_df.empty:
@@ -626,8 +626,8 @@ def page_trade_flow(where):
         # Ordenamos los datos para que Plotly lea el flujo cronológico correctamente
         top_df = top_df.sort_values(by=['anio', 'rank'], ascending=[True, True])
         
-        # Creamos una etiqueta limpia para mostrar dentro o al lado de las barras
-        top_df['etiqueta'] = top_df['origin_name']
+        # Creamos una etiqueta limpia para mostrar dentro de las barras (País + Valor)
+        top_df['etiqueta'] = top_df['origin_name'] + " (" + top_df['eur_bn'].round(1).astype(str) + " Bn)"
 
         fig_anim = px.bar(
             top_df, 
@@ -643,15 +643,18 @@ def page_trade_flow(where):
         )
         
         # Ocultamos el eje numérico del rango y dejamos solo la etiqueta de texto en las barras
-        fig_anim.update_yaxes(autorange="reversed", showticklabels=False, title="")
+        fig_anim.update_yaxes(autorange="reversed", showticklabels=False, title="", showgrid=False)
+        fig_anim.update_xaxes(showgrid=True, gridcolor="#e2e8f0")
         
         # Reducimos la velocidad de la animación (más milisegundos = transición más lenta y suave)
         fig_anim.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] = 1200
         fig_anim.layout.updatemenus[0].buttons[0].args[1]["transition"]["duration"] = 800
         
         pt(fig_anim)
-        fig_anim.update_layout(height=550, showlegend=False, xaxis_title="Volumen FOB (€ Bn)")
-        fig_anim.update_traces(textposition='outside')
+        fig_anim.update_layout(height=550, showlegend=False, xaxis_title="Volumen FOB (€ Bn)", margin=dict(l=20, r=20, t=40, b=40))
+        # Para evitar que los textos desaparezcan, los fijamos dentro de las barras y los ponemos en negrita
+        fig_anim.update_traces(textposition='inside', textfont=dict(size=12, color='#1e293b', weight='bold'), cliponaxis=False)
+        
         st.plotly_chart(fig_anim, use_container_width=True)
         
         ai_agent("Dinámica de Regionalización", "Reproduce la animación superior para observar cómo la jerarquía de los socios comerciales se ha reconfigurado. El ascenso de países europeos o de la cuenca mediterránea en la gráfica es la confirmación visual de la estrategia de Nearshoring a lo largo del tiempo.")
