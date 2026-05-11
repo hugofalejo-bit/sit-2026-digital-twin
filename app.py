@@ -81,6 +81,10 @@ section[data-testid="stSidebar"] .stRadio [aria-checked="true"] + div label {
 .stDeployButton { display: none; }
 header { background: transparent !important; }
 
+/* Control de Selectores */
+.stMultiSelect [data-baseweb="tag"] { background-color: var(--sky) !important; color: var(--ub-blue) !important; border: 1px solid var(--border); }
+.stMultiSelect [data-baseweb="tag"] span { color: var(--ub-blue) !important; }
+
 /* Tarjetas KPI */
 .kpi-card {
   background: var(--white); border: 1px solid var(--border); border-radius: 8px;
@@ -114,6 +118,12 @@ header { background: transparent !important; }
 .stTabs [data-baseweb="tab-list"] { background: transparent; border-bottom: 2px solid var(--border); }
 .stTabs [data-baseweb="tab"] { font-weight: 700 !important; color: var(--gray600) !important; padding: 10px 20px !important; }
 .stTabs [aria-selected="true"] { color: var(--ub-blue) !important; border-bottom-color: var(--ub-blue) !important; }
+
+/* Resultados Highlights */
+.result-highlight { background: linear-gradient(135deg, var(--ub-blue) 0%, #002244 100%); color: white; border-radius: 12px; padding: 22px 26px; margin: 12px 0; border-bottom: 4px solid var(--ub-red); box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+.result-highlight .rh-title { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: .15em; opacity: .8; text-transform: uppercase; margin-bottom: 8px; }
+.result-highlight .rh-value { font-size: 28px; font-weight: 800; line-height: 1.2; margin: 0 0 6px 0; }
+.result-highlight .rh-sub { font-size: 13px; opacity: .9; font-weight: 500; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -123,35 +133,76 @@ header { background: transparent !important; }
 PARQUET_PATH = os.getenv("PARQUET_PATH", "TFM_HS2_Macro_Dataset.parquet")
 LOGO_PATH    = os.getenv("LOGO_PATH", "logo.png")
 
-ISO3_EU = {'AUT':'Austria','BEL':'Bélgica','BGR':'Bulgaria','HRV':'Croacia','CYP':'Chipre','CZE':'República Checa','DNK':'Dinamarca','EST':'Estonia','FIN':'Finlandia','FRA':'Francia','DEU':'Alemania','GRC':'Grecia','HUN':'Hungría','IRL':'Irlanda','ITA':'Italia','LVA':'Letonia','LTU':'Lituania','LUX':'Luxemburgo','MLT':'Malta','NLD':'Países Bajos','POL':'Polonia','PRT':'Portugal','ROU':'Rumanía','SVK':'Eslovaquia','SVN':'Eslovenia','ESP':'España','SWE':'Suecia'}
-HS2_ES = {'01':'Animales vivos', '02':'Carne y despojos', '03':'Pescado y mariscos', '04':'Lácteos y huevos', '05':'Otros origen animal', '06':'Plantas y flores', '07':'Legumbres y hortalizas', '08':'Frutas y cítricos', '09':'Café, té y especias', '10':'Cereales', '11':'Productos molinería', '12':'Semillas oleaginosas', '15':'Grasas y aceites', '16':'Prep. carne/pescado', '17':'Azúcares', '18':'Cacao', '19':'Prep. cereales', '20':'Prep. legumbres', '21':'Prep. diversas', '22':'Bebidas y alcohol', '23':'Residuos alimentarios', '24':'Tabaco', '25':'Sal, azufre y tierras', '26':'Minerales y escorias', '27':'Combustibles y petróleo', '28':'Química inorgánica', '29':'Químicos orgánicos', '30':'Farma & Salud', '31':'Abonos y fertilizantes', '32':'Extractos curtientes/tintes', '33':'Aceites esenciales', '34':'Jabones y ceras', '38':'Químicos diversos', '39':'Plásticos', '40':'Caucho y derivados', '44':'Madera', '47':'Pasta de madera', '48':'Papel y cartón', '50':'Seda', '51':'Lana', '52':'Algodón', '54':'Filamentos sintéticos', '55':'Fibras sintéticas', '61':'Prendas de vestir (Punto)', '62':'Prendas de vestir (No punto)', '64':'Calzado', '68':'Manufacturas de piedra', '69':'Productos cerámicos', '70':'Vidrio', '71':'Perlas y joyería', '72':'Fundición, hierro y acero', '73':'Manufacturas de hierro/acero', '74':'Cobre', '76':'Aluminio', '82':'Herramientas y cuchillería', '84':'Maquinaria y reactores', '85':'Aparatos eléctricos/electrónica', '86':'Vehículos ferroviarios', '87':'Vehículos automóviles', '88':'Aeronaves y espaciales', '89':'Barcos y navegación', '90':'Instrumentos médicos', '93':'Armas y municiones', '94':'Muebles', '95':'Juguetes y deportes', '99':'Otros (Confidencial)'}
+ISO3_EU = {
+    'AUT':'Austria','BEL':'Bélgica','BGR':'Bulgaria','HRV':'Croacia','CYP':'Chipre',
+    'CZE':'República Checa','DNK':'Dinamarca','EST':'Estonia','FIN':'Finlandia','FRA':'Francia',
+    'DEU':'Alemania','GRC':'Grecia','HUN':'Hungría','IRL':'Irlanda','ITA':'Italia',
+    'LVA':'Letonia','LTU':'Lituania','LUX':'Luxemburgo','MLT':'Malta','NLD':'Países Bajos',
+    'POL':'Polonia','PRT':'Portugal','ROU':'Rumanía','SVK':'Eslovaquia','SVN':'Eslovenia',
+    'ESP':'España','SWE':'Suecia'
+}
+
+HS2_ES = {
+    '01':'Animales vivos', '02':'Carne y despojos', '03':'Pescado y mariscos', '04':'Lácteos y huevos',
+    '05':'Otros origen animal', '06':'Plantas y flores', '07':'Legumbres y hortalizas', '08':'Frutas y cítricos',
+    '09':'Café, té y especias', '10':'Cereales', '11':'Productos molinería', '12':'Semillas oleaginosas',
+    '15':'Grasas y aceites', '16':'Prep. carne/pescado', '17':'Azúcares', '18':'Cacao', '19':'Prep. cereales',
+    '20':'Prep. legumbres', '21':'Prep. diversas', '22':'Bebidas y alcohol', '23':'Residuos alimentarios',
+    '24':'Tabaco', '25':'Sal, azufre y tierras', '26':'Minerales y escorias', '27':'Combustibles y petróleo',
+    '28':'Química inorgánica', '29':'Químicos orgánicos', '30':'Farma & Salud', '31':'Abonos y fertilizantes',
+    '32':'Extractos curtientes/tintes', '33':'Aceites esenciales', '34':'Jabones y ceras', '38':'Químicos diversos',
+    '39':'Plásticos', '40':'Caucho y derivados', '44':'Madera', '47':'Pasta de madera', '48':'Papel y cartón',
+    '50':'Seda', '51':'Lana', '52':'Algodón', '54':'Filamentos sintéticos', '55':'Fibras sintéticas',
+    '61':'Prendas de vestir (Punto)', '62':'Prendas de vestir (No punto)', '64':'Calzado', '68':'Manufacturas de piedra',
+    '69':'Productos cerámicos', '70':'Vidrio', '71':'Perlas y joyería', '72':'Fundición, hierro y acero',
+    '73':'Manufacturas de hierro/acero', '74':'Cobre', '76':'Aluminio', '82':'Herramientas y cuchillería',
+    '84':'Maquinaria y reactores', '85':'Aparatos eléctricos/electrónica', '86':'Vehículos ferroviarios',
+    '87':'Vehículos automóviles', '88':'Aeronaves y espaciales', '89':'Barcos y navegación', '90':'Instrumentos médicos',
+    '93':'Armas y municiones', '94':'Muebles', '95':'Juguetes y deportes', '99':'Otros (Confidencial)'
+}
 
 def macro_sector(hs):
     try:
         h = int(hs)
-        if 1 <= h <= 24: return 'Alimentos & Agricultura'
-        elif h == 27: return 'Energía & Combustibles'
-        elif h == 30: return 'Farmacia & Salud'
+        if   1  <= h <= 24: return 'Alimentos & Agricultura'
+        elif h  == 27:      return 'Energía & Combustibles'
+        elif h  == 30:      return 'Farmacia & Salud'
         elif 28 <= h <= 38: return 'Química'
         elif 39 <= h <= 40: return 'Plásticos & Caucho'
         elif 50 <= h <= 64: return 'Textil, Ropa & Calzado'
         elif h in [84,85,90]: return 'Tecnología & Electrónica'
         elif h in [86,87,88,89]: return 'Movilidad & Automoción'
         elif 72 <= h <= 83: return 'Metales & Minerales'
-        else: return 'Otros Sectores'
-    except: return 'Otros Sectores'
+        else:               return 'Otros Sectores'
+    except:
+        return 'Otros Sectores'
 
 COLORS = { 'ub_blue':'#003d65', 'ub_red':'#aa1916', 'teal':'#0d9488', 'green':'#059669', 'amber':'#d97706', 'purple':'#6366f1', 'ub_slate':'#334155' }
 COLOR_SEQ = list(COLORS.values())
-PLOTLY_BASE = dict(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(family='Plus Jakarta Sans, sans-serif', color='#334155', size=12), xaxis=dict(gridcolor='#e2e8f0', linecolor='#cbd5e1', zerolinecolor='#cbd5e1'), yaxis=dict(gridcolor='#e2e8f0', linecolor='#cbd5e1', zerolinecolor='#cbd5e1'), legend=dict(bgcolor='rgba(255,255,255,0.9)', bordercolor='#e2e8f0', borderwidth=1), margin=dict(t=40, b=30, l=50, r=20), colorway=COLOR_SEQ)
-CRISIS_EVENTS = {'2008-09': ('Global Financial Crisis', '#aa1916'), '2020-03': ('COVID-19 Pandemic', '#aa1916'), '2022-03': ('Ukraine Conflict', '#aa1916')}
+
+PLOTLY_BASE = dict(
+    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+    font=dict(family='Plus Jakarta Sans, sans-serif', color='#334155', size=12),
+    xaxis=dict(gridcolor='#e2e8f0', linecolor='#cbd5e1', zerolinecolor='#cbd5e1'),
+    yaxis=dict(gridcolor='#e2e8f0', linecolor='#cbd5e1', zerolinecolor='#cbd5e1'),
+    legend=dict(bgcolor='rgba(255,255,255,0.9)', bordercolor='#e2e8f0', borderwidth=1),
+    margin=dict(t=40, b=30, l=50, r=20),
+    colorway=COLOR_SEQ,
+)
+
+CRISIS_EVENTS = {
+    '2008-09': ('Global Financial Crisis', '#aa1916'),
+    '2020-03': ('COVID-19 Pandemic', '#aa1916'),
+    '2022-03': ('Ukraine Conflict', '#aa1916'),
+}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. MOTOR DUCKDB (MODHERDUCK INTEGRATED)
+# 3. MOTOR DUCKDB Y ESTIBA DE CONTENEDORES (CONEXIÓN DUAL: NUBE/LOCAL)
 # ─────────────────────────────────────────────────────────────────────────────
 @st.cache_resource
 def get_con():
     hs2_case = ' '.join([f"WHEN CAST(hs2_code AS INTEGER) = {int(k)} THEN '{v}'" for k, v in HS2_ES.items()])
+    
     view_sql = f"""
         SELECT *,
             CASE
@@ -180,14 +231,18 @@ def get_con():
             END, 'Otros Sectores') AS macro_sector,
             COALESCE(CASE {hs2_case} ELSE 'Otros' END, 'Otros') AS hs2_nombre
     """
+
     try:
         token = st.secrets["MOTHERDUCK_TOKEN"]
         con = duckdb.connect(f'md:?motherduck_token={token}')
         con.execute(f"CREATE OR REPLACE VIEW trade AS {view_sql} FROM my_db.raw_trade")
     except Exception:
         con = duckdb.connect(':memory:', read_only=False)
-        if not os.path.exists(PARQUET_PATH): st.stop()
+        if not os.path.exists(PARQUET_PATH):
+            st.error(f"Error Crítico: No se encontró 'MOTHERDUCK_TOKEN' en Secrets ni el archivo local Parquet en:\n`{PARQUET_PATH}`")
+            st.stop()
         con.execute(f"CREATE OR REPLACE VIEW trade AS {view_sql} FROM read_parquet('{PARQUET_PATH}')")
+        
     return con
 
 @st.cache_data(ttl=600, show_spinner=False)
@@ -195,7 +250,7 @@ def q(_cid, sql: str) -> pd.DataFrame:
     return get_con().execute(sql).df()
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 4. COMPONENTES UI
+# 4. COMPONENTES UI Y AGENTE IA
 # ─────────────────────────────────────────────────────────────────────────────
 def render_header(title, subtitle):
     c1, c2 = st.columns([5, 1])
@@ -203,18 +258,81 @@ def render_header(title, subtitle):
         st.markdown(f"""
         <div style='margin-bottom:20px'>
           <div style='font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.15em; color:#aa1916;text-transform:uppercase;font-weight:800;'>
-            UNIVERSITAT DE BARCELONA · TRABAJO FINAL DE MÁSTER 2026
+            UNIVERSITAT DE BARCELONA · TRABAJO FINAL DE MÁSTER 2026<br>MÁSTER EN LOGÍSTICA Y COMERCIO INTERNACIONAL
           </div>
           <div style='font-size:32px;font-weight:800;color:#003d65;margin:8px 0 4px;letter-spacing:-.5px;'>{title}</div>
           <div style='font-size:15px;color:#475569;max-width:850px;line-height:1.6;'>{subtitle}</div>
-        </div>""", unsafe_allow_html=True)
-    if os.path.exists(LOGO_PATH): c2.image(LOGO_PATH, use_container_width=True)
+        </div>
+        """, unsafe_allow_html=True)
+    with c2:
+        if os.path.exists(LOGO_PATH):
+            st.image(LOGO_PATH, use_container_width=True)
 
-def section(label, title):
-    st.markdown(f'<div class="sec-wrap"><div class="sec-label">{label}</div><div class="sec-title">{title}</div></div>', unsafe_allow_html=True)
+def section(label, title, desc=""):
+    st.markdown(f"""
+    <div class="sec-wrap">
+      <div class="sec-label">{label}</div>
+      <div class="sec-title">{title}</div>
+      {"<div class='sec-desc'>"+desc+"</div>" if desc else ""}
+    </div>""", unsafe_allow_html=True)
 
 def kpi(label, value, sub="", color="#003d65"):
-    st.markdown(f'<div class="kpi-card"><div class="kpi-accent" style="background:{color}"></div><div class="kpi-label">{label}</div><div class="kpi-value">{value}</div><div class="kpi-sub">{sub}</div></div>', unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="kpi-card">
+      <div class="kpi-accent" style="background:{color}"></div>
+      <div class="kpi-label">{label}</div>
+      <div class="kpi-value">{value}</div>
+      <div class="kpi-sub">{sub}</div>
+    </div>""", unsafe_allow_html=True)
+
+def formula(text):
+    st.markdown(f'<div class="formula-box"><b>Formulación Matemática:</b><br>{text}</div>', unsafe_allow_html=True)
+
+def info(text):
+    st.markdown(f'<div class="info-box"><b>Nota Metodológica:</b><br>{text}</div>', unsafe_allow_html=True)
+
+def ai_agent(title, text):
+    st.markdown(f"""
+    <div class="ai-agent-box">
+      <div class="ai-title">C-LEVEL INSIGHT · {title}</div>
+      <div class="ai-text">{text}</div>
+    </div>""", unsafe_allow_html=True)
+
+def result_hl(title, value, sub=""):
+    st.markdown(f"""
+    <div class="result-highlight">
+      <div class="rh-title">{title}</div>
+      <div class="rh-value">{value}</div>
+      <div class="rh-sub">{sub}</div>
+    </div>""", unsafe_allow_html=True)
+
+def pt(fig):
+    fig.update_layout(**PLOTLY_BASE)
+    return fig
+
+def add_crises(fig, is_subplot=False):
+    for ds, (label, color) in CRISIS_EVENTS.items():
+        try:
+            fecha_obj = pd.to_datetime(ds)
+            fig.add_vline(x=fecha_obj, line=dict(color=color, width=1.5, dash='dot'))
+            if not is_subplot:
+                fig.add_annotation(
+                    x=fecha_obj, y=1.05, yref="paper",
+                    text=label, showarrow=False,
+                    font=dict(color=color, size=11)
+                )
+        except Exception: pass
+    return fig
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. LIBRERÍA MATEMÁTICA Y ESTADÍSTICA
+# ─────────────────────────────────────────────────────────────────────────────
+def tariff_trade_impact(eur_base, tariff_old, tariff_new, elasticity=-1.1):
+    delta_tau  = tariff_new - tariff_old
+    pct_change = elasticity * delta_tau / (1 + tariff_old)
+    eur_new    = eur_base * (1 + pct_change)
+    cost_direct= eur_new * tariff_new - eur_base * tariff_old
+    return {'eur_new': eur_new, 'pct_change': pct_change, 'cost_direct': cost_direct}
 
 def macro_queue_metrics(lam, capacity):
     if capacity <= 0: return dict(rho=1.0, Lq=float('inf'), Wq=float('inf'))
@@ -224,60 +342,131 @@ def macro_queue_metrics(lam, capacity):
     Lq = lam * Wq
     return dict(rho=rho, Lq=Lq, Wq=Wq)
 
-def tariff_trade_impact(eur_base, tariff_old, tariff_new, elasticity=-1.1):
-    delta_tau  = tariff_new - tariff_old
-    pct_change = elasticity * delta_tau / (1 + tariff_old)
-    eur_new    = eur_base * (1 + pct_change)
-    cost_direct= eur_new * tariff_new - eur_base * tariff_old
-    return {'eur_new': eur_new, 'pct_change': pct_change, 'cost_direct': cost_direct}
+def monte_carlo_lvar(lt_mean, lt_std, eur_mean, eur_std, bce_rate, n_sim=10_000):
+    r = max(bce_rate/100, 0.001)
+    lt_v  = np.log(1 + (lt_std / max(lt_mean, 0.01))**2)
+    lt_mu = np.log(max(lt_mean, 0.01)) - lt_v/2
+    lt_s  = np.random.lognormal(lt_mu, np.sqrt(lt_v), n_sim)
+    v_v   = np.log(1 + (eur_std / max(eur_mean, 1))**2)
+    v_mu  = np.log(max(eur_mean, 1)) - v_v/2
+    v_s   = np.random.lognormal(v_mu, np.sqrt(v_v), n_sim)
+    lvar_s = 1.645 * (lt_s * 0.3) * v_s * r / 365
+    p95    = np.percentile(lvar_s, 95)
+    return dict(
+        mean=np.mean(lvar_s), std=np.std(lvar_s), p50=np.percentile(lvar_s, 50),
+        p95=p95, p99=np.percentile(lvar_s, 99), cvar_95=np.mean(lvar_s[lvar_s >= p95]), sim=lvar_s,
+    )
 
 def resilience_score(wad_trend, hhi_norm, lvar_norm, near_share):
-    score = 50.0 + np.clip(-wad_trend * 0.002, -20, 20)
-    if hhi_norm > 5000: score -= 25
+    score = 50.0
+    score += np.clip(-wad_trend * 0.002, -20, 20)
+    if   hhi_norm > 5000: score -= 25
     elif hhi_norm < 1500: score += 25
-    else: score += 25 - (hhi_norm - 1500)/3500 * 50
-    score += np.clip(-lvar_norm * 15, -30, 30) + np.clip((near_share - 20) * 0.5, -25, 25)
+    else:                 score += 25 - (hhi_norm - 1500)/3500 * 50
+    score += np.clip(-lvar_norm * 15, -30, 30)
+    score += np.clip((near_share - 20) * 0.5, -25, 25)
     return float(np.clip(score, 0, 100))
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 6. SIDEBAR Y ROUTER
+# 6. SIDEBAR Y FILTROS GLOBALES
 # ─────────────────────────────────────────────────────────────────────────────
 def render_sidebar():
     with st.sidebar:
-        if os.path.exists(LOGO_PATH): st.image(LOGO_PATH, use_container_width=True)
+        if os.path.exists(LOGO_PATH):
+            st.image(LOGO_PATH, use_container_width=True)
+
         st.markdown("<div style='text-align:center;margin-bottom:20px;margin-top:10px;'><div style='font-family:\"Space Mono\",monospace;font-size:12px;letter-spacing:.1em;color:#003d65;text-transform:uppercase;font-weight:800'>SIT-2026 Core</div></div>", unsafe_allow_html=True)
-        pages = ["Panel Ejecutivo", "Flujos Comerciales", "Modelado de Escenarios", "Motor de Riesgo (LVaR)", "Gemelo Portuario", "Monitoreo Nearshoring", "Análisis de Sobrecostos (TCO)", "Consola de Investigación", "Glosario y Exportación"]
+
+        pages = [
+            "Panel Ejecutivo",
+            "Flujos Comerciales",
+            "Modelado de Escenarios",
+            "Motor de Riesgo (LVaR)",
+            "Gemelo Portuario",
+            "Monitoreo Nearshoring",
+            "Análisis de Sobrecostos (TCO)",
+            "Consola de Investigación",
+            "Glosario y Exportación",
+        ]
         page = st.radio("MÓDULOS DE ANÁLISIS", pages, label_visibility="collapsed")
+
         st.markdown('<hr style="border-top:1px solid #cbd5e1;margin:16px 0">', unsafe_allow_html=True)
         years = st.slider("Horizonte Temporal", 2002, 2025, (2018, 2025))
         where_temp = f"WHERE YEAR(date) BETWEEN {years[0]} AND {years[1]}"
+
         all_macros = sorted(list(set([macro_sector(k) for k in HS2_ES.keys()])))
         sel_macros = st.multiselect("1. Sector Macroeconómico", ["TODOS"] + all_macros, default=["TODOS"])
         where_macro = f" AND macro_sector IN ('{"','".join(sel_macros)}')" if "TODOS" not in sel_macros else ""
+
         valid_hs2 = ["TODOS"] + [f"{k} - {v}" for k, v in HS2_ES.items() if ("TODOS" in sel_macros or macro_sector(k) in sel_macros)]
         sel_hs2 = st.multiselect("2. Clasificación Micro (HS2)", valid_hs2, default=["TODOS"])
         codes = [s.split(" - ")[0] for s in sel_hs2 if s != "TODOS"]
         where_hs2 = f" AND CAST(hs2_code AS INTEGER) IN ({','.join(codes)})" if codes else ""
+
         paises_query = q(901, f"SELECT DISTINCT origin_name FROM trade {where_temp} {where_macro} {where_hs2} ORDER BY origin_name")
         sel_origins = st.multiselect("3. País de Origen", ["TODOS"] + paises_query['origin_name'].tolist(), default=["TODOS"])
         where_origin = f" AND origin_name IN ('{"','".join(sel_origins)}')" if "TODOS" not in sel_origins else ""
+
         destinos_query = q(902, f"SELECT DISTINCT d_iso FROM trade {where_temp} {where_macro} {where_origin} ORDER BY d_iso")
         sel_dest = st.multiselect("4. Destino (Estado Miembro)", ["TODOS"] + [ISO3_EU.get(x, x) for x in destinos_query['d_iso'].tolist()], default=["TODOS"])
         inv_iso = {v: k for k, v in ISO3_EU.items()}
-        where_dest = f" AND d_iso IN ('{"','".join([inv_iso.get(x, x) for x in sel_dest if x != "TODOS"])}')" if "TODOS" not in sel_dest and sel_dest else ""
+        where_dest = f" AND d_iso IN ('{"','".join([inv_iso.get(x, x) for x in sel_dest if x != 'TODOS'])}')" if "TODOS" not in sel_dest and sel_dest else ""
+
         puertos_query = q(903, f"SELECT DISTINCT puerto FROM trade {where_temp} {where_macro} {where_origin} {where_dest} ORDER BY puerto")
         sel_ports = st.multiselect("5. Puerto de Arribo", ["TODOS"] + puertos_query['puerto'].tolist(), default=["TODOS"])
         where_port = f" AND puerto IN ('{"','".join(sel_ports)}')" if "TODOS" not in sel_ports else ""
         crisis_only = st.checkbox("Aislar períodos de crisis globales", False)
         where_crisis = " AND flag_crisis = 1" if crisis_only else ""
-    return page, f"{where_temp} {where_macro} {where_hs2} {where_origin} {where_dest} {where_port} {where_crisis}"
+
+    full_where = f"{where_temp} {where_macro} {where_hs2} {where_origin} {where_dest} {where_port} {where_crisis}"
+    return page, full_where
+
 
 # ═════════════════════════════════════════════════════════════════════════════
-# PAGINA 5 · GEMELO PORTUARIO (VERSION ANTIGUA RESTAURADA)
+# PAGINA 1 · EXECUTIVE DASHBOARD
+# ═════════════════════════════════════════════════════════════════════════════
+def page_executive_dashboard(where):
+    render_header("Panel Ejecutivo y Control Macro", "Sistema de Inteligencia Estratégica...")
+    kdf = q(0, f"SELECT SUM(eur)/1e9 AS eur_bn, SUM(eur*dist_nm)/SUM(eur) AS wad, SUM(LVaR_95)/1e9 AS lvar_bn, SUM(total_friction_cost)/1e9 AS friction_bn, AVG(lead_time) AS lt_mean, SUM(CASE WHEN flag_crisis=1 THEN eur ELSE 0 END)/NULLIF(SUM(eur),0)*100 AS pct_crisis, SUM(CASE WHEN is_near=1 THEN eur ELSE 0 END)/NULLIF(SUM(eur),0)*100 AS pct_near FROM trade {where}")
+    if kdf.empty or pd.isna(kdf.iloc[0]['eur_bn']): return st.warning("Sin datos.")
+    v = kdf.iloc[0]
+    c = st.columns(5)
+    with c[0]: kpi("Volumen Comercial", f"€{v.eur_bn:,.1f} Bn")
+    with c[1]: kpi("WAD Global", f"{v.wad:,.0f} nm")
+    with c[2]: kpi("LVaR (Tail Risk)", f"€{v.lvar_bn:,.1f} Bn", color=COLORS['ub_red'])
+    with c[3]: kpi("Costos de Fricción", f"€{v.friction_bn:,.1f} Bn")
+    with c[4]: kpi("Tiempo de Tránsito", f"{v.lt_mean:.1f} d")
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PAGINA 2 · TRADE FLOW
+# ═════════════════════════════════════════════════════════════════════════════
+def page_trade_flow(where):
+    render_header("Flujos Comerciales", "Mapeo global.")
+    df = q(44, f"SELECT origin_name, SUM(eur)/1e9 as eur_bn FROM trade {where} GROUP BY 1 ORDER BY 2 DESC LIMIT 10")
+    st.plotly_chart(px.pie(df, values='eur_bn', names='origin_name'))
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PAGINA 3 · SCENARIOS
+# ═════════════════════════════════════════════════════════════════════════════
+def page_scenario(where):
+    render_header("Modelado de Escenarios", "Estrategia.")
+    st.info("Utilice las herramientas para simular shocks.")
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PAGINA 4 · MONTE CARLO
+# ═════════════════════════════════════════════════════════════════════════════
+def page_montecarlo(where):
+    render_header("Motor de Riesgo (LVaR)", "Monte Carlo.")
+    p = q(11, f"SELECT AVG(lead_time) as m, AVG(lt_std) as s, AVG(eur) as e FROM trade {where}").iloc[0]
+    sim = np.random.lognormal(np.log(max(p['m'],1)), 0.3, 10000) * p['e'] * 0.015 / 365
+    st.plotly_chart(px.histogram(sim))
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PAGINA 5 · GEMELO PORTUARIO (VERSIÓN ORIGINAL RESTAURADA)
 # ═════════════════════════════════════════════════════════════════════════════
 def page_port_twin(where):
-    render_header("Gemelo Portuario", "El Nearshoring exige buques más pequeños y mayor frecuencia. Este modelo M/M/1 predice si la infraestructura soporta el estrés físico.")
-    st.markdown('<div class="formula-box"><b>Saturación:</b> ρ = λ / μ  |  <b>Tiempo en Cola:</b> Wq = ρ / (μ - λ)  |  <b>Inventario Atascado:</b> Lq = λ × Wq</div>', unsafe_allow_html=True)
+    render_header("Gemelo Portuario", "El Nearshoring exige buques más pequeños y mayor frecuencia (Short Sea Shipping). Este modelo M/M/1 predice si la infraestructura europea soporta el estrés físico.")
+    formula("Saturación: ρ = λ / μ   |   Tiempo en Cola: Wq = ρ / (μ - λ)   |   Inventario Atascado: Lq = λ × Wq")
     
     geo_data = q(120, f"SELECT DISTINCT d_iso, puerto FROM trade {where}")
     if geo_data.empty: return st.warning("Ajusta los filtros geográficos.")
@@ -289,7 +478,7 @@ def page_port_twin(where):
     with c0: country_name = st.selectbox("Estado Miembro", countries)
     country_sel_iso = "TODOS" if country_name=="TODOS" else list(country_names_map.keys())[list(country_names_map.values()).index(country_name)]
 
-    ports_avail = (["TODOS"] + sorted(geo_data[geo_data['d_iso']==country_sel_iso]['puerto'].dropna().unique().tolist()) if country_sel_iso!="TODOS" else ["TODOS"] + sorted(geo_data['puerto'].dropna().unique().tolist()))
+    ports_avail  = (["TODOS"] + sorted(geo_data[geo_data['d_iso']==country_sel_iso]['puerto'].dropna().unique().tolist()) if country_sel_iso!="TODOS" else ["TODOS"] + sorted(geo_data['puerto'].dropna().unique().tolist()))
     with c1: port_sel = st.selectbox("Terminal", ports_avail)
     
     port_filter_sql = ""
@@ -321,51 +510,26 @@ def page_port_twin(where):
     fig_sens.add_vline(x=capacity_day, line_dash="dash", line_color=COLORS['ub_blue'], annotation_text="Punto Operativo")
     pt(fig_sens); fig_sens.update_layout(title="Curva Asintótica de Colapso (Ley de Little)", xaxis_title="Velocidad de Extracción, μ (TEUs/día)", yaxis_title="Penalización por Inactividad, Wq (Días)", height=380); st.plotly_chart(fig_sens, use_container_width=True)
 
-    if metrics['rho'] >= 1.0: st.error("FALLO SISTÉMICO INMINENTE: La tasa de arribos supera la capacidad de extracción.")
-    elif metrics['rho'] >= 0.85: st.warning(f"ZONA DE ESTRÉS: La utilización ({metrics['rho']*100:.1f}%) ha traspasado el umbral crítico.")
-    else: st.success(f"ESTABILIDAD DE CAPACIDAD: El buffer de resiliencia operativa es excelente ({metrics['rho']*100:.1f}%).")
+    if metrics['rho'] >= 1.0: ai_agent("FALLO SISTÉMICO INMINENTE", "La tasa de arribos supera la capacidad de extracción.")
+    elif metrics['rho'] >= 0.85: ai_agent("ZONA DE ESTRÉS", f"La utilización ({metrics['rho']*100:.1f}%) ha traspasado el umbral del 85%.")
+    else: ai_agent("ESTABILIDAD", f"El buffer es excelente ({metrics['rho']*100:.1f}%).")
 
 # ═════════════════════════════════════════════════════════════════════════════
-# PAGINAS ADICIONALES (TAL CUAL EN TU CODIGO)
+# PAGINAS 6-9
 # ═════════════════════════════════════════════════════════════════════════════
-def page_executive_dashboard(where):
-    render_header("Panel Ejecutivo y Control Macro", "Control Estratégico.")
-    kdf = q(0, f"SELECT SUM(eur)/1e9 AS eur_bn, SUM(eur*dist_nm)/SUM(eur) AS wad, SUM(LVaR_95)/1e9 AS lvar_bn FROM trade {where}")
-    if kdf.empty or pd.isna(kdf.iloc[0]['eur_bn']): return st.warning("Sin datos.")
-    v = kdf.iloc[0]
-    c = st.columns(3)
-    with c[0]: kpi("Volumen Comercial", f"€{v.eur_bn:,.1f} Bn")
-    with c[1]: kpi("WAD Global", f"{v.wad:,.0f} nm")
-    with c[2]: kpi("LVaR Total", f"€{v.lvar_bn:,.1f} Bn")
-
-def page_trade_flow(where):
-    render_header("Flujos Comerciales", "Mapeo.")
-    df = q(44, f"SELECT origin_name, SUM(eur)/1e9 as e FROM trade {where} GROUP BY 1 ORDER BY 2 DESC LIMIT 10")
-    st.plotly_chart(px.pie(df, values='e', names='origin_name'))
-
-def page_scenario(where):
-    render_header("Modelado de Escenarios", "Estrategia.")
-    st.info("Pestaña de modelado de políticas arancelarias y de carbono.")
-
-def page_montecarlo(where):
-    render_header("Motor de Riesgo (LVaR)", "Monte Carlo")
-    p = q(11, f"SELECT AVG(lead_time) as m, AVG(lt_std) as s, AVG(eur) as e FROM trade {where}").iloc[0]
-    sim = np.random.lognormal(np.log(max(p['m'],1)), 0.3, 10000) * p['e'] * 0.015 / 365
-    st.plotly_chart(px.histogram(sim))
-
 def page_nearshoring(where):
-    render_header("Monitoreo Nearshoring", "Transición")
+    render_header("Monitoreo Nearshoring", "Regionalización.")
     df = q(300, f"SELECT YEAR(date) as a, is_near, SUM(eur)/1e9 as e FROM trade {where} GROUP BY 1,2 ORDER BY 1")
     st.plotly_chart(px.area(df, x='a', y='e', color='is_near'))
 
 def page_cost_xray(where):
-    render_header("Análisis de Sobrecostos (TCO)", "Fricción")
+    render_header("Análisis de Sobrecostos (TCO)", "TCO.")
     v = q(19, f"SELECT SUM(costo_arancel)/1e9 as a, SUM(costo_co2_ets)/1e9 as c FROM trade {where}").iloc[0]
     st.plotly_chart(go.Figure(go.Waterfall(x=["Arancel", "CO2"], y=[v.a, v.c])))
 
 def page_research(where):
-    render_header("Consola de Investigación", "Validación.")
-    st.info("Modelos PPML y PELT activos.")
+    render_header("Consola de Investigación", "Investigación.")
+    st.info("PELT y PPML activos.")
 
 def page_glossary(where):
     render_header("Glosario y Exportación", "Taxonomía")
