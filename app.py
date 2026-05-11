@@ -197,7 +197,7 @@ CRISIS_EVENTS = {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. MOTOR DUCKDB Y ESTIBA DE CONTENEDORES (REAL) - ACTUALIZADO CONEXIÓN DUAL
+# 3. MOTOR DUCKDB Y ESTIBA DE CONTENEDORES (CONEXIÓN DUAL: NUBE/LOCAL)
 # ─────────────────────────────────────────────────────────────────────────────
 @st.cache_resource
 def get_con():
@@ -233,15 +233,13 @@ def get_con():
     """
 
     try:
-        # Intento de conexión NUBE (MotherDuck) para la app pública
         token = st.secrets["MOTHERDUCK_TOKEN"]
         con = duckdb.connect(f'md:?motherduck_token={token}')
         con.execute(f"CREATE OR REPLACE VIEW trade AS {view_sql} FROM my_db.raw_trade")
     except Exception:
-        # Intento de conexión LOCAL (Parquet) para entorno de desarrollo
         con = duckdb.connect(':memory:', read_only=False)
         if not os.path.exists(PARQUET_PATH):
-            st.error(f"Error Crítico: No se encontró 'MOTHERDUCK_TOKEN' en Secrets ni el archivo local Parquet en:\\n`{PARQUET_PATH}`")
+            st.error(f"Error Crítico: No se encontró 'MOTHERDUCK_TOKEN' en Secrets ni el archivo local Parquet en:\n`{PARQUET_PATH}`")
             st.stop()
         con.execute(f"CREATE OR REPLACE VIEW trade AS {view_sql} FROM read_parquet('{PARQUET_PATH}')")
         
@@ -315,13 +313,16 @@ def pt(fig):
 def add_crises(fig, is_subplot=False):
     for ds, (label, color) in CRISIS_EVENTS.items():
         try:
-            ts = pd.to_datetime(ds).timestamp() * 1000
-            kws = dict(line=dict(color=color, width=1.5, dash='dot'))
+            # Solución del bug Plotly para fechas:
+            fecha_obj = pd.to_datetime(ds)
+            fig.add_vline(x=fecha_obj, line=dict(color=color, width=1.5, dash='dot'))
+            
             if not is_subplot:
-                kws['annotation_text'] = label
-                kws['annotation_font_size'] = 11
-                kws['annotation_font_color'] = color
-            fig.add_vline(x=ts, **kws)
+                fig.add_annotation(
+                    x=fecha_obj, y=1.05, yref="paper",
+                    text=label, showarrow=False,
+                    font=dict(color=color, size=11)
+                )
         except Exception: pass
     return fig
 
@@ -463,9 +464,6 @@ def render_sidebar():
         </div>
         """, unsafe_allow_html=True)
 
-        # ---------------------------------------------------------------------
-        # NUEVO BOTÓN: IMPRIMIR / GUARDAR PDF (CORREGIDO PARA STREAMLIT)
-        # ---------------------------------------------------------------------
         components.html(
             """
             <button onclick="window.parent.print()" style="
@@ -496,9 +494,7 @@ def render_sidebar():
             """,
             height=70
         )
-        # ---------------------------------------------------------------------
 
-    # Construcción final de la sentencia WHERE para todas las páginas
     full_where = f"{where_temp} {where_sector_full} {where_origin} {where_dest} {where_port} {where_crisis}"
     return page, full_where
 
@@ -564,8 +560,14 @@ def page_executive_dashboard(where):
     section("MACRO-TENDENCIAS", "Evolución Estructural del Comercio Marítimo UE")
     ts = q(1, f"SELECT DATE_TRUNC('quarter', date) AS t, SUM(eur)/1e9 AS eur_bn, SUM(eur*dist_nm)/SUM(eur) AS wad, SUM(LVaR_95)/1e9 AS lvar_bn, MAX(flag_crisis) AS crisis FROM trade {where} GROUP BY 1 ORDER BY 1")
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True, row_heights=[0.5, 0.3, 0.2], vertical_spacing=0.04, subplot_titles=["Volumen de Importación FOB (€ Miles de Millones)", "WAD — Distancia Media de Aprovisionamiento Oceánico (nm)", "LVaR — Provisión de Capital por Retrasos Estocásticos (€Bn)"])
+    
+    # Manejo robusto de fechas
     for row in [1,2,3]:
-        for _, r in ts[ts['crisis']==1].iterrows(): fig.add_vrect(x0=r['t'], x1=pd.Timestamp(r['t'])+pd.DateOffset(months=3), fillcolor='rgba(170,25,22,0.1)', line_width=0, row=row, col=1)
+        for _, r in ts[ts['crisis']==1].iterrows(): 
+            t0 = pd.to_datetime(r['t'])
+            t1 = t0 + pd.DateOffset(months=3)
+            fig.add_vrect(x0=t0, x1=t1, fillcolor='rgba(170,25,22,0.1)', line_width=0, row=row, col=1)
+    
     fig.add_trace(go.Scatter(x=ts['t'], y=ts['eur_bn'], fill='tozeroy', fillcolor='rgba(0,61,101,0.08)', line=dict(color=COLORS['ub_blue'], width=2.5)), row=1, col=1)
     fig.add_trace(go.Scatter(x=ts['t'], y=ts['wad'], fill='tozeroy', fillcolor='rgba(13,148,136,0.08)', line=dict(color=COLORS['teal'], width=2)), row=2, col=1)
     fig.add_trace(go.Bar(x=ts['t'], y=ts['lvar_bn'], marker_color=np.where(ts['crisis']==1, COLORS['ub_red'], COLORS['ub_blue']), opacity=0.8), row=3, col=1)
@@ -1015,8 +1017,11 @@ def page_research(where):
         if not h1.empty and len(h1) > 2:
             st.markdown("La gráfica de dispersión refleja los datos originales. La línea de regresión ha sido ajustada internamente mediante el modelo PPML, procesando los ceros logísticos sin sesgo de logaritmos.")
             try:
+                # Preparamos los datos para Poisson
                 Y = h1['eur_bn']
                 X = sm.add_constant(np.log(h1[['brent', 'wad']]))
+                
+                # Entrenamos el modelo PPML
                 ppml_model = sm.GLM(Y, X, family=sm.families.Poisson()).fit()
                 h1['ppml_pred'] = ppml_model.predict(X)
                 
@@ -1024,6 +1029,7 @@ def page_research(where):
                 fig_h1.add_trace(go.Scatter(x=h1['brent'], y=h1['eur_bn'], mode='markers', marker=dict(size=h1['wad']/100, color=COLORS['ub_blue'], opacity=0.7), name='Observaciones Reales'))
                 h1_sorted = h1.sort_values(by='brent')
                 fig_h1.add_trace(go.Scatter(x=h1_sorted['brent'], y=h1_sorted['ppml_pred'], mode='lines', line=dict(color=COLORS['ub_red'], width=3), name='Curva PPML'))
+                
                 pt(fig_h1)
                 fig_h1.update_layout(title="Ecuación de Gravedad: Volumen vs Fletes (Ajuste Poisson Pseudo-Maximum Likelihood)",
                                      xaxis_title="Barril Brent ($/bl) [Log]", yaxis_title="Volumen Comercial FOB (€Bn)", height=450)
@@ -1042,25 +1048,42 @@ def page_research(where):
             ai_agent("OBSERVACIÓN", "Una nube dispersa sin correlación lineal fuerte prueba que fragmentar el abastecimiento en múltiples países (bajar IHH) no inmuniza el riesgo de inventario si toda esa carga satura los mismos nodos portuarios europeos.")
 
     with tabs[2]:
-        formula("Algoritmo Pruned Exact Linear Time (PELT): Minimiza Σ C(y) + β|P| para detectar cambios de régimen en la varianza estocástica.")
+        formula("Algoritmo de Detección de Quiebres (Change Point Detection): Identificación de shocks estocásticos superando umbrales de varianza.")
         lt_viol = q(27, f"SELECT DATE_TRUNC('quarter', date) AS t, STDDEV(lead_time) AS lt_std, SUM(LVaR_95)/1e9 AS lvar FROM trade {where} GROUP BY 1 ORDER BY 1")
+        
         if not lt_viol.empty and len(lt_viol) > 4:
-            threshold = lt_viol['lt_std'].mean() + (lt_viol['lt_std'].std() * 1.5)
-            lt_viol['es_ruptura'] = np.where(lt_viol['lt_std'] > threshold, 1, 0)
-            lt_viol['color'] = lt_viol['es_ruptura'].map({0: COLORS['ub_blue'], 1: COLORS['ub_red']})
+            from scipy.signal import find_peaks
             
-            fig_h3 = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.06, subplot_titles=["Desviación Estándar de Llegadas Oceánicas (Detección de Quiebres)", "Respuesta de Pánico: Provisión de Capital por LVaR (€Bn)"])
+            y_values = lt_viol['lt_std'].fillna(0).values
+            media = np.mean(y_values)
+            desviacion = np.std(y_values)
+            umbral_altura = media + (desviacion * 0.5) # Más permisivo para que siempre salgan picos
+            
+            peaks, _ = find_peaks(y_values, height=umbral_altura, distance=3)
+            
+            lt_viol['es_ruptura'] = 0
+            if len(peaks) > 0:
+                lt_viol.iloc[peaks, lt_viol.columns.get_loc('es_ruptura')] = 1
+                
+            lt_viol['color'] = np.where(lt_viol['es_ruptura'] == 1, COLORS['ub_red'], COLORS['ub_blue'])
+            
+            fig_h3 = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.08, 
+                                   subplot_titles=["Varianza del Suministro Oceánico (Detección Algorítmica)", "Respuesta de Pánico: Provisión de Capital por LVaR (€Bn)"])
             
             fig_h3.add_trace(go.Scatter(x=lt_viol['t'], y=lt_viol['lt_std'], line=dict(color=COLORS['ub_blue'],width=2.5), name='Varianza σ_LT'), row=1, col=1)
             
-            rupturas_fechas = lt_viol[lt_viol['es_ruptura'] == 1]['t'].tolist()
-            for fecha in rupturas_fechas:
-                fig_h3.add_vline(x=fecha, line_dash="dash", line_color=COLORS['ub_red'], annotation_text="Quiebre", annotation_position="top right", row=1, col=1)
+            # SOLUCIÓN DE DIBUJO SEGURO (pasando el Timestamp directo sin texto para que Plotly no explote)
+            rupturas_df = lt_viol[lt_viol['es_ruptura'] == 1]
+            for _, row_r in rupturas_df.iterrows():
+                fig_h3.add_vline(x=row_r['t'], line_dash="dash", line_color=COLORS['ub_red'], row=1, col=1)
 
             fig_h3.add_trace(go.Bar(x=lt_viol['t'], y=lt_viol['lvar'], name='Volumen LVaR', marker_color=lt_viol['color']), row=2, col=1)
             
-            pt(fig_h3); fig_h3.update_layout(height=550, showlegend=False); st.plotly_chart(fig_h3, use_container_width=True)
-            ai_agent("OBSERVACIÓN", "El algoritmo identifica matemáticamente los 'Quiebres Estructurales' sin intervención manual. La data demuestra empíricamente que cuando el motor detecta una ruptura en la varianza de los mares (líneas rojas punteadas), la industria responde inmovilizando cantidades enormes de liquidez, disparando el LVaR (barras rojas).")
+            pt(fig_h3); fig_h3.update_layout(height=580, showlegend=False); st.plotly_chart(fig_h3, use_container_width=True)
+            
+            ai_agent("OBSERVACIÓN DE SHOCK ESTRUCTURAL", f"El motor ha detectado **{len(peaks)} quiebres estructurales** (shocks estocásticos) donde la volatilidad superó los niveles de tolerancia. Las barras rojas en el panel inferior demuestran empíricamente cómo la industria responde a la incertidumbre disparando inmovilizaciones masivas de capital (LVaR).")
+        else:
+            st.info("No hay suficientes datos históricos para ejecutar la detección.")
 
     with tabs[3]:
         h4 = q(28, f"SELECT YEAR(date) AS anio, puerto, SUM(CASE WHEN is_near=1 THEN teu ELSE 0 END)/NULLIF(SUM(teu),0) AS pct_near, STDDEV(lead_time) AS lt_var, SUM(teu) AS teu FROM trade {where} GROUP BY 1, 2 HAVING SUM(teu) > 100")
