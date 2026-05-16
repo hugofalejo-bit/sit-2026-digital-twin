@@ -406,22 +406,53 @@ def guide_box(title, text):
 
 def render_footer():
     import base64
+    import os
     svg_base64 = ""
-    # Localización absoluta del archivo dentro de la estructura de producción
     ruta_svg = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "Logotipo_SECIHTI.svg")
     
-    # Codificación dinámica en Base64 para garantizar compatibilidad nativa en HTML/CSS
     if os.path.exists(ruta_svg):
         with open(ruta_svg, "rb") as f:
             svg_base64 = base64.b64encode(f.read()).decode("utf-8")
     
-    logo_html = f'<img src="data:image/svg+xml;base64,{svg_base64}" style="height:26px; margin-left:12px; vertical-align:middle;" />' if svg_base64 else ""
+    # Ajustamos la altura del logo, evitamos que se encoja y agregamos un divisor visual elegante
+    logo_html = f'<img src="data:image/svg+xml;base64,{svg_base64}" style="height:38px; margin-left:18px; padding-left:18px; border-left:1.5px solid #cbd5e1; flex-shrink:0;" />' if svg_base64 else ""
 
     st.markdown(f"""
+    <style>
+        /* Ajustes internos para evitar choques con la UI de Streamlit */
+        .sechithi-footer {{
+            padding-left: 20px !important;
+            padding-right: 100px !important; /* Bloquea el choque con el botón negro de Manage App */
+        }}
+        .sechithi-footer-inner {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: nowrap;
+            width: 100%;
+        }}
+        /* Diseño responsivo: Si la pantalla es pequeña, se apilan verticalmente */
+        @media (max-width: 768px) {{
+            .sechithi-footer-inner {{
+                flex-direction: column;
+                text-align: center;
+            }}
+            .sechithi-footer-inner img {{
+                margin: 8px 0 0 0 !important;
+                padding: 8px 0 0 0 !important;
+                border-left: none !important;
+                border-top: 1.5px solid #cbd5e1 !important;
+            }}
+        }}
+    </style>
     <div class="sechithi-footer">
-        Proyecto desarrollado con el apoyo y beca institucional de la 
-        <span class="sechithi-highlight">Secretaría de Ciencia, Humanidades, Tecnología e Innovación (SECIHTI).</span>
-        {logo_html}
+        <div class="sechithi-footer-inner">
+            <div style="text-align: right; line-height: 1.4; font-size: 11px;">
+                Proyecto desarrollado con el apoyo y beca institucional de la<br>
+                <span class="sechithi-highlight" style="font-size: 11.5px;">Secretaría de Ciencia, Humanidades, Tecnología e Innovación (SECIHTI).</span>
+            </div>
+            {logo_html}
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
