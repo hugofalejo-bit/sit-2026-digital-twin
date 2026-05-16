@@ -405,10 +405,23 @@ def guide_box(title, text):
     </div>""", unsafe_allow_html=True)
 
 def render_footer():
-    st.markdown("""
+    import base64
+    svg_base64 = ""
+    # Localización absoluta del archivo dentro de la estructura de producción
+    ruta_svg = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "Logotipo_SECIHTI.svg")
+    
+    # Codificación dinámica en Base64 para garantizar compatibilidad nativa en HTML/CSS
+    if os.path.exists(ruta_svg):
+        with open(ruta_svg, "rb") as f:
+            svg_base64 = base64.b64encode(f.read()).decode("utf-8")
+    
+    logo_html = f'<img src="data:image/svg+xml;base64,{svg_base64}" style="height:26px; margin-left:12px; vertical-align:middle;" />' if svg_base64 else ""
+
+    st.markdown(f"""
     <div class="sechithi-footer">
         Proyecto desarrollado con el apoyo y beca institucional de la 
         <span class="sechithi-highlight">Secretaría de Ciencia, Humanidades, Tecnología e Innovación (SECIHTI).</span>
+        {logo_html}
     </div>
     """, unsafe_allow_html=True)
 
