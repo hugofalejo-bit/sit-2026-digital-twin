@@ -1,4 +1,4 @@
-SIT-2026 | Supply Chain Digital Twin (Enterprise Edition)
+SIT-2026 | Supply Chain Digital Twin
 
 SIT-2026 es un Gemelo Digital logístico de grado empresarial desarrollado como Trabajo Final de Máster en la Universitat de Barcelona (UB). Diseñado para medir empíricamente el impacto financiero y operativo de relocalizar las cadenas de suministro globales (Nearshoring) hacia la Unión Europea y el área mediterránea.
 
