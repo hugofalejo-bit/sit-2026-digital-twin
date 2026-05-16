@@ -422,7 +422,7 @@ def render_footer():
         /* Ajustes internos para evitar choques con la UI de Streamlit */
         .sechithi-footer {{
             padding-left: 20px !important;
-            padding-right: 100px !important; /* Bloquea el choque con el botón negro de Manage App */
+            padding-right: 80px !important; /* Bloquea el choque con el botón negro de Manage App */
         }}
         .sechithi-footer-inner {{
             display: flex;
