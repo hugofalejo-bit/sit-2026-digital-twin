@@ -1527,7 +1527,7 @@ def page_scenario(where):
 def page_research(where):
     render_header("Consola de Modelación e Investigación Matemática", "Ejecución de modelos econométricos avanzados (Regresiones PPML no lineales) y algoritmos para aislar perturbaciones críticas (Quiebres de Varianza PELT).")
     
-    guide_box("CONSOLA DE VALIDACIÓN CIENTÍFICA", "Esta es la sala de máquinas estadística de tu TFM. No te preocupes por entender el código profundo: la pestaña 'PPML' sirve para demostrar con datos que a mayor distancia de flete, el volumen comercial realmente decae. La pestaña 'PELT' busca picos de estrés en la historia de tu selección para validar que las caídas no son accidentes, sino perturbaciones matemáticas comprobables.")
+    guide_box("CONSOLA DE VALIDACIÓN CIENTÍFICA", "Esta es la sala de máquinas estadística. No te preocupes por entender el código profundo: la pestaña 'PPML' sirve para demostrar con datos que a mayor distancia de flete, el volumen comercial realmente decae. La pestaña 'PELT' busca picos de estrés en la historia de tu selección para validar que las caídas no son accidentes, sino perturbaciones matemáticas comprobables.")
 
     tabs = st.tabs(["Ecuación Gravitacional Avanzada (PPML)","Diagramación: Paradoja de Diversificación Geográfica","Detector Algorítmico de Perturbaciones (PELT)","Matriz: Fricción Operacional vs Regionalización (SSS)"])
 
